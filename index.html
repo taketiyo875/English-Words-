@@ -1,0 +1,205 @@
+
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英検3級 2000語ランダム4択クイズ</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .quiz-container {
+            background-color: #fff;
+            width: 100%;
+            max-width: 450px;
+            padding: 30px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .status-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .japanese-word {
+            font-size: 1.6rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 25px;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .option-btn {
+            background-color: #fff;
+            color: #34495e;
+            border: 2px solid #bdc3c7;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #f8f9fa;
+            border-color: #3498db;
+        }
+
+        .result-message {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-top: 15px;
+            min-height: 30px;
+        }
+        .correct { color: #2ecc71; }
+        .wrong { color: #e74c3c; }
+
+        .next-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            box-shadow: 0 4px 6px rgba(52,152,219,0.2);
+        }
+        .next-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>英検3級 ランダム単語テスト ✏️</h1>
+
+    <div class="quiz-container">
+        <div class="status-info">
+            <div id="q-num">第 1 問</div>
+            <div id="score-count">スコア: 0 / 0</div>
+        </div>
+        <div class="japanese-word" id="q-japanese">読み込み中...</div>
+        
+        <div class="options-list" id="options"></div>
+
+        <div class="result-message" id="result"></div>
+        <button class="next-btn" id="next-trigger" style="display: none;" onclick="generateQuestion()">次の問題へ</button>
+    </div>
+
+    <script>
+        let allWords = [];
+        let currentQuestion = {};
+        let questionCount = 0;
+        let correctCount = 0;
+
+        async function loadWordData() {
+            try {
+                const response = await fetch('words.json');
+                allWords = await response.json();
+                generateQuestion();
+            } catch (error) {
+                document.getElementById("q-japanese").textContent = "データの読み込みに失敗しました。";
+                console.error(error);
+            }
+        }
+
+        function generateQuestion() {
+            if (allWords.length < 4) return;
+            
+            questionCount++;
+            document.getElementById("q-num").textContent = `第 ${questionCount} 問`;
+            document.getElementById("result").textContent = "";
+            document.getElementById("next-trigger").style.display = "none";
+
+            let shuffled = [...allWords].sort(() => 0.5 - Math.random());
+            let choices = shuffled.slice(0, 4);
+            
+            let correctItem = choices[Math.floor(Math.random() * choices.length)];
+            
+            currentQuestion = {
+                japanese: correctItem.j,
+                options: choices.map(item => item.e),
+                answer: choices.findIndex(item => item.e === correctItem.e)
+            };
+
+            document.getElementById("q-japanese").textContent = currentQuestion.japanese;
+            
+            const optionsContainer = document.getElementById("options");
+            optionsContainer.innerHTML = "";
+            
+            currentQuestion.options.forEach((option, index) => {
+                const button = document.createElement("button");
+                button.className = "option-btn";
+                button.textContent = option;
+                button.onclick = () => checkAnswer(index, button);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        function checkAnswer(selectedIndex, clickedButton) {
+            const resultElement = document.getElementById("result");
+            const allButtons = document.querySelectorAll(".option-btn");
+            
+            allButtons.forEach(btn => btn.disabled = true);
+            
+            if (selectedIndex === currentQuestion.answer) {
+                correctCount++;
+                resultElement.textContent = "⭕ 正解！";
+                resultElement.className = "result-message correct";
+                clickedButton.style.backgroundColor = "#2ecc71";
+                clickedButton.style.color = "white";
+                clickedButton.style.borderColor = "#2ecc71";
+            } else {
+                resultElement.textContent = `❌ 不正解... （正解は: ${currentQuestion.options[currentQuestion.answer]}）`;
+                resultElement.className = "result-message wrong";
+                clickedButton.style.backgroundColor = "#e74c3c";
+                clickedButton.style.color = "white";
+                clickedButton.style.borderColor = "#e74c3c";
+            }
+            
+            document.getElementById("score-count").textContent = `スコア: ${correctCount} / ${questionCount}`;
+            document.getElementById("next-trigger").style.display = "inline-block";
+        }
+
+        loadWordData();
+    </script>
+</body>
+</html>
+
+
